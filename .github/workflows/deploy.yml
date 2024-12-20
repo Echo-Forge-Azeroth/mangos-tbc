@@ -70,6 +70,9 @@ jobs:
     needs: build-and-publish
     runs-on: ubuntu-latest
     name: Deploy ${{ matrix.image.name }}
+    permissions:
+      contents: read
+      packages: read
     strategy:
       matrix: 
           image:
@@ -79,13 +82,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Extract info
+        env:
+          ORG_SERVER_IP: ${{ vars.ORG_SERVER_IP }}
+          ORG_TEST_SERVER_IP: ${{ vars.ORG_TEST_SERVER_IP }}
         run: |
             REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
             BRANCH=$(git branch -r --contains ${{ github.ref }} --format "%(refname:lstrip=3)") 
             if [[ $BRANCH == "master" ]]; then
-              echo "SERVER_IP=${{ vars.ORG_SERVER_IP }}" >> $GITHUB_ENV
+              echo "SERVER_IP=${{ env.ORG_SERVER_IP }}" >> $GITHUB_ENV
             else
-              echo "SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}" >> $GITHUB_ENV
+              echo "SERVER_IP=${{ env.ORG_TEST_SERVER_IP }}" >> $GITHUB_ENV
             fi
             echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
       - name: Set up SSH
@@ -99,6 +105,7 @@ jobs:
           chmod 600 ~/.ssh/config
       - name: Deploy to Dokku
         run: |
+          echo "${{ vars.ORG_TEST_SERVER_IP }} / ${{ vars.ORG_SERVER_IP }}"
           ssh dokku@${{ env.SERVER_IP }} tags:set ${{ matrix.image.name }} ${{ github.ref_name }}
           ssh dokku@${{ env.SERVER_IP }} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
           ssh dokku@${{ env.SERVER_IP }} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ github.ref_name }}
