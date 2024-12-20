@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Publish ${{ matrix.image.name }}
     strategy:
-      fail-fast: false
       matrix: 
           image:
             - name: realm
@@ -107,7 +106,8 @@ jobs:
           chmod 600 ~/.ssh/config
       - name: Deploy to Dokku
         run: |
-          ssh dokku@${{ env.SERVER_IP }} tags:set ${{ matrix.image.name }} ${{ github.ref_name }}
           ssh dokku@${{ env.SERVER_IP }} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
           ssh dokku@${{ env.SERVER_IP }} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ github.ref_name }}
           ssh dokku@${{ env.SERVER_IP }} ps:restart ${{ matrix.image.name }}
+
+
