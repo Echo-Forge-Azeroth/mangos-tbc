@@ -106,6 +106,7 @@ jobs:
           chmod 600 ~/.ssh/config
       - name: Deploy to Dokku
         run: |
+          ssh dokku@${{ env.SERVER_IP }} apps:create ${{ matrix.image.name }} || true"
           ssh dokku@${{ env.SERVER_IP }} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
           ssh dokku@${{ env.SERVER_IP }} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ github.ref_name }}
           ssh dokku@${{ env.SERVER_IP }} ps:restart ${{ matrix.image.name }}
