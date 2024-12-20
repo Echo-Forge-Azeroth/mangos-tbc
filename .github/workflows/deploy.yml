@@ -21,7 +21,7 @@ jobs:
               {"name": "realm", "BUILD_REALM": "TRUE", "BUILD_WORLD": "FALSE"},
               {"name": "world", "BUILD_REALM": "FALSE", "BUILD_WORLD": "TRUE"}
             ]}' > matrix.json
-            echo "matrix=$(cat matrix.json | jq -Rs .)" >> $GITHUB_ENV
+            echo "matrix=$(cat matrix.json | jq -Rs .)" >> $GITHUB_OUTPUT
 
   build-and-publish:
     needs: generate-matrix
