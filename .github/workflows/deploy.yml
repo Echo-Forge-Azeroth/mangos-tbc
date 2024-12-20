@@ -17,10 +17,10 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-            echo '[
+            echo '{"include": [
               {"name": "realm", "BUILD_REALM": "TRUE", "BUILD_WORLD": "FALSE"},
               {"name": "world", "BUILD_REALM": "FALSE", "BUILD_WORLD": "TRUE"}
-            ]' > matrix.json
+            ]}' > matrix.json
             echo "matrix=$(cat matrix.json | jq -Rs .)" >> $GITHUB_OUTPUT
 
   build-and-publish:
@@ -29,7 +29,7 @@ jobs:
     name: Build and Publish ${{ matrix.name }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix).include }}
     permissions:
       contents: read
       packages: write
@@ -84,7 +84,7 @@ jobs:
     name: Deploy ${{ matrix.name }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix).include }}
     steps:
       - name: Deploy to Dokku
         run: |
