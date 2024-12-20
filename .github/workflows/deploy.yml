@@ -17,10 +17,10 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          echo "::set-output name=matrix::{\"include\": [
+          echo "matrix={\"include\": [
             {\"name\": \"realm\", \"BUILD_REALM\": \"TRUE\", \"BUILD_WORLD\": \"FALSE\"},
             {\"name\": \"world\", \"BUILD_REALM\": \"FALSE\", \"BUILD_WORLD\": \"TRUE\"}
-          ]}"
+          ]}" >> $GITHUB_ENV
 
   build-and-publish:
     needs: generate-matrix
@@ -43,7 +43,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set Docker tag
-        id: docker-tag
         run: |
           if [[ "${{ github.ref_name }}" == "master" ]]; then
             echo "TAG=latest" >> $GITHUB_ENV
@@ -78,22 +77,22 @@ jobs:
           docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.name }}:${{ env.TAG }}
 
   deploy:
-      needs: build-and-publish
-      runs-on: ubuntu-latest
-      steps:
-        - name: Deploy to Dokku
-          run: |
-            MATRIX=${{ needs.generate-matrix.outputs.matrix }}
-            for row in $(echo "$MATRIX" | jq -c '.include[]'); do
-              IMAGE_NAME=$(echo "$row" | jq -r '.name')
-              if [[ "${{ github.ref_name }}" == "master" ]]; then
-                SERVER_IP=${{ vars.ORG_SERVER_IP }}
-              else
-                SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}
-              fi
-              docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/$IMAGE_NAME:${{ env.TAG }}
-              ssh dokku@${SERVER_IP} apps:destroy --force $IMAGE_NAME || true
-              ssh dokku@${SERVER_IP} apps:create $IMAGE_NAME
-              ssh dokku@${SERVER_IP} docker-options:add $IMAGE_NAME deploy "--restart always"
-              ssh dokku@${SERVER_IP} tags:set $IMAGE_NAME ${{ env.TAG }}
-            done
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Dokku
+        run: |
+          MATRIX=$(cat $GITHUB_ENV | grep '^matrix=' | cut -d'=' -f2-)
+          for row in $(echo "$MATRIX" | jq -c '.include[]'); do
+            IMAGE_NAME=$(echo "$row" | jq -r '.name')
+            if [[ "${{ github.ref_name }}" == "master" ]]; then
+              SERVER_IP=${{ vars.ORG_SERVER_IP }}
+            else
+              SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}
+            fi
+            docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/$IMAGE_NAME:${{ env.TAG }}
+            ssh dokku@${SERVER_IP} apps:destroy --force $IMAGE_NAME || true
+            ssh dokku@${SERVER_IP} apps:create $IMAGE_NAME
+            ssh dokku@${SERVER_IP} docker-options:add $IMAGE_NAME deploy "--restart always"
+            ssh dokku@${SERVER_IP} tags:set $IMAGE_NAME ${{ env.TAG }}
+          done
