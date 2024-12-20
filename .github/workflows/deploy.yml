@@ -81,6 +81,10 @@ jobs:
             - name: realm
             - name: world
     steps:
+      - name: Extract REPO_NAME
+        run: |
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]')
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
       - name: Deploy to Dokku
         run: |
             if [[ "${{ github.ref_name }}" == "master" ]]; then
@@ -90,8 +94,8 @@ jobs:
               SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}
               TAG=test
             fi
-            docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name }}:$TAG
-            ssh dokku@${SERVER_IP} apps:destroy --force ${{ matrix.image.name }} || true
-            ssh dokku@${SERVER_IP} apps:create ${{ matrix.image.name }}
-            ssh dokku@${SERVER_IP} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
             ssh dokku@${SERVER_IP} tags:set ${{ matrix.image.name }} $TAG
+            ssh dokku@${SERVER_IP} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
+            ssh dokku@${SERVER_IP} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:$TAG
+            ssh dokku@${SERVER_IP} ps:restart ${{ matrix.image.name }}
+
