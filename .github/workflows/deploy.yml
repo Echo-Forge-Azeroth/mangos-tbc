@@ -79,16 +79,12 @@ jobs:
       - name: Extract info
         run: |
             REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
-            TAG=${{ github.ref_name }}
-            REPO=${{ github.repository }}
-            RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/git/refs/tags/$TAG")
-            BRANCH=$(echo "$RESPONSE" | jq -r '.object.sha' | xargs -I {} curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/commits/{}" | jq -r '.commit.message') 
+            BRANCH=$(git branch -r --contains ${{ github.ref }} --format "%(refname:lstrip=3)") 
             if [[ $BRANCH == "master" ]]; then
               echo "SERVER_IP=${{ vars.ORG_SERVER_IP }}" >> $GITHUB_ENV
             else
               echo "SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}" >> $GITHUB_ENV
             fi
-            echo "branch=$BRANCH" >> $GITHUB_ENV
             echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
       - name: Set up SSH
         id: setup-ssh
@@ -101,7 +97,7 @@ jobs:
           chmod 600 ~/.ssh/config
       - name: Deploy to Dokku
         run: |
-          ssh dokku@${{env.SERVER_IP}} tags:set ${{ matrix.image.name }} $TAG
-          ssh dokku@${{env.SERVER_IP}} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
-          ssh dokku@${{env.SERVER_IP}} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:$TAG
-          ssh dokku@${{env.SERVER_IP}} ps:restart ${{ matrix.image.name }}
+          ssh dokku@${{ env.SERVER_IP }} tags:set ${{ matrix.image.name }} ${{ github.ref_name }}
+          ssh dokku@${{ env.SERVER_IP }} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
+          ssh dokku@${{ env.SERVER_IP }} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ github.ref_name }}
+          ssh dokku@${{ env.SERVER_IP }} ps:restart ${{ matrix.image.name }}
