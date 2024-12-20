@@ -17,18 +17,19 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-            echo '{"include": [
+            echo '[
               {"name": "realm", "BUILD_REALM": "TRUE", "BUILD_WORLD": "FALSE"},
               {"name": "world", "BUILD_REALM": "FALSE", "BUILD_WORLD": "TRUE"}
-            ]}' > matrix.json
+            ]' > matrix.json
             echo "matrix=$(cat matrix.json | jq -Rs .)" >> $GITHUB_OUTPUT
 
   build-and-publish:
     needs: generate-matrix
     runs-on: ubuntu-latest
+    name: Build and Publish ${{ matrix.name }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix).include }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     permissions:
       contents: read
       packages: write
@@ -78,22 +79,22 @@ jobs:
           docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.name }}:${{ env.TAG }}
 
   deploy:
-    needs: build-and-publish
+    needs: [generate-matrix, build-and-publish]
     runs-on: ubuntu-latest
+    name: Deploy ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Deploy to Dokku
         run: |
-          MATRIX=$(cat $GITHUB_ENV | grep '^matrix=' | cut -d'=' -f2-)
-          for row in $(echo "$MATRIX" | jq -c '.include[]'); do
-            IMAGE_NAME=$(echo "$row" | jq -r '.name')
             if [[ "${{ github.ref_name }}" == "master" ]]; then
               SERVER_IP=${{ vars.ORG_SERVER_IP }}
             else
               SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}
             fi
-            docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/$IMAGE_NAME:${{ env.TAG }}
-            ssh dokku@${SERVER_IP} apps:destroy --force $IMAGE_NAME || true
-            ssh dokku@${SERVER_IP} apps:create $IMAGE_NAME
-            ssh dokku@${SERVER_IP} docker-options:add $IMAGE_NAME deploy "--restart always"
-            ssh dokku@${SERVER_IP} tags:set $IMAGE_NAME ${{ env.TAG }}
-          done
+            docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.name }}:${{ env.TAG }}
+            ssh dokku@${SERVER_IP} apps:destroy --force ${{ matrix.name }} || true
+            ssh dokku@${SERVER_IP} apps:create ${{ matrix.name }}
+            ssh dokku@${SERVER_IP} docker-options:add ${{ matrix.name }} deploy "--restart always"
+            ssh dokku@${SERVER_IP} tags:set ${{ matrix.name }} ${{ env.TAG }}
