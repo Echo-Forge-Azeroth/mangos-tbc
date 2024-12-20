@@ -2,9 +2,8 @@ name: Build, Publish, and Deploy Docker Images
 
 on:
   push:
-    branches:
-      - develop
-      - master
+    tags:
+      - '*'
 
 env:
   REGISTRY: ghcr.io
@@ -20,9 +19,9 @@ jobs:
             - name: realm
               build_realm: "TRUE"
               build_world: "FALSE"
-            - name: world
-              build_realm: "FALSE"
-              build_world: "TRUE"
+            #- name: world
+            #  build_realm: "FALSE"
+            #  build_world: "TRUE"
     permissions:
       contents: read
       packages: write
@@ -36,13 +35,10 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set Docker tag
         run: |
-          if [[ "${{ github.ref_name }}" == "master" ]]; then
-            echo "TAG=latest" >> $GITHUB_ENV
-          else
-            echo "TAG=test" >> $GITHUB_ENV
-          fi
+            echo "TAG=${{ github.ref_name}}" >> $GITHUB_ENV
 
       - name: Extract REPO_NAME
         run: |
@@ -75,23 +71,25 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy ${{ matrix.image.name }}
     strategy:
-      fail-fast: false
       matrix: 
           image:
             - name: realm
-            - name: world
+            #- name: world
     steps:
       - name: Extract info
         run: |
             REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
-            echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
-            if [[ "${{ github.ref_name }}" == "main" ]]; then
-              echo "TAG=latest" >> $GITHUB_ENV
+            TAG=${{ github.ref_name }}
+            REPO=${{ github.repository }}
+            RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/git/refs/tags/$TAG")
+            BRANCH=$(echo "$RESPONSE" | jq -r '.object.sha' | xargs -I {} curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/commits/{}" | jq -r '.commit.message') 
+            if [[ $BRANCH == "master" ]]; then
               echo "SERVER_IP=${{ vars.ORG_SERVER_IP }}" >> $GITHUB_ENV
             else
-              echo "TAG=test" >> $GITHUB_ENV
               echo "SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}" >> $GITHUB_ENV
             fi
+            echo "branch=$BRANCH" >> $GITHUB_ENV
+            echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
       - name: Set up SSH
         id: setup-ssh
         run: |
