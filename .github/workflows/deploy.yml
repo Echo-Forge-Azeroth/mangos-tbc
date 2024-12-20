@@ -10,26 +10,19 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  generate-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - id: set-matrix
-        run: |
-            echo '{"include": [
-              {"name": "realm", "BUILD_REALM": "TRUE", "BUILD_WORLD": "FALSE"},
-              {"name": "world", "BUILD_REALM": "FALSE", "BUILD_WORLD": "TRUE"}
-            ]}' > matrix.json
-            echo "matrix=$(cat matrix.json | jq -Rs .)" >> $GITHUB_OUTPUT
-
   build-and-publish:
-    needs: generate-matrix
     runs-on: ubuntu-latest
-    name: Build and Publish ${{ matrix.name }}
+    name: Build and Publish ${{ matrix.image.name }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix: 
+          image:
+            - name: realm
+              build_realm: "TRUE"
+              build_world: "FALSE"
+            - name: world
+              build_realm: "FALSE"
+              build_world: "TRUE"
     permissions:
       contents: read
       packages: write
@@ -68,23 +61,26 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -t ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.name }}:${{ env.TAG }} \
-            --target ${{ matrix.name }} \
-            --build-arg BUILD_WORLD=${{ matrix.BUILD_WORLD }} \
-            --build-arg BUILD_REALM=${{ matrix.BUILD_REALM }} \
+            -t ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }} \
+            --target ${{ matrix.image.name  }} \
+            --build-arg BUILD_WORLD=${{ matrix.image.build_world }} \
+            --build-arg BUILD_REALM=${{ matrix.image.build_realm }} \
             .
 
       - name: Push Docker image
         run: |
-          docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.name }}:${{ env.TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }}
 
   deploy:
-    needs: [generate-matrix, build-and-publish]
+    needs: build-and-publish
     runs-on: ubuntu-latest
-    name: Deploy ${{ matrix.name }}
+    name: Deploy ${{ matrix.image.name  }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix: 
+          image:
+            - name: realm
+            - name: world
     steps:
       - name: Deploy to Dokku
         run: |
@@ -93,8 +89,8 @@ jobs:
             else
               SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}
             fi
-            docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.name }}:${{ env.TAG }}
-            ssh dokku@${SERVER_IP} apps:destroy --force ${{ matrix.name }} || true
-            ssh dokku@${SERVER_IP} apps:create ${{ matrix.name }}
-            ssh dokku@${SERVER_IP} docker-options:add ${{ matrix.name }} deploy "--restart always"
-            ssh dokku@${SERVER_IP} tags:set ${{ matrix.name }} ${{ env.TAG }}
+            docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }}
+            ssh dokku@${SERVER_IP} apps:destroy --force ${{ matrix.image.name  }} || true
+            ssh dokku@${SERVER_IP} apps:create ${{ matrix.image.name  }}
+            ssh dokku@${SERVER_IP} docker-options:add ${{ matrix.image.name  }} deploy "--restart always"
+            ssh dokku@${SERVER_IP} tags:set ${{ matrix.image.name  }} ${{ env.TAG }}
