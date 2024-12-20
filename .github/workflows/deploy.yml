@@ -81,21 +81,29 @@ jobs:
             - name: realm
             - name: world
     steps:
-      - name: Extract REPO_NAME
+      - name: Extract info
         run: |
-          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
-          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+            REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
+            echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+            if [[ "${{ github.ref_name }}" == "main" ]]; then
+              echo "TAG=latest" >> $GITHUB_ENV
+              echo "SERVER_IP=${{ vars.ORG_SERVER_IP }}" >> $GITHUB_ENV
+            else
+              echo "TAG=test" >> $GITHUB_ENV
+              echo "SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}" >> $GITHUB_ENV
+            fi
+      - name: Set up SSH
+        id: setup-ssh
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.ORG_SSH_PRIVATE_KEY_BASE64 }}" | base64 -d > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
       - name: Deploy to Dokku
         run: |
-            if [[ "${{ github.ref_name }}" == "master" ]]; then
-              SERVER_IP=${{ vars.ORG_SERVER_IP }}
-              TAG=latest
-            else
-              SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}
-              TAG=test
-            fi
-            ssh dokku@${SERVER_IP} tags:set ${{ matrix.image.name }} $TAG
-            ssh dokku@${SERVER_IP} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
-            ssh dokku@${SERVER_IP} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:$TAG
-            ssh dokku@${SERVER_IP} ps:restart ${{ matrix.image.name }}
-
+          ssh dokku@${{env.SERVER_IP}} tags:set ${{ matrix.image.name }} $TAG
+          ssh dokku@${{env.SERVER_IP}} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
+          ssh dokku@${{env.SERVER_IP}} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:$TAG
+          ssh dokku@${{env.SERVER_IP}} ps:restart ${{ matrix.image.name }}
