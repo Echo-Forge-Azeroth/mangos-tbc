@@ -76,6 +76,8 @@ jobs:
             - name: realm
             #- name: world
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
       - name: Extract info
         run: |
             REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
