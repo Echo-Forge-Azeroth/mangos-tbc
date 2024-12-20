@@ -7,6 +7,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  SERVER_IP: ${{ vars.ORG_SERVER_IP }}
+  TEST_SERVER_IP: ${{ vars.ORG_TEST_SERVER_IP }}
+  SSH_PRIVATE_KEY_BASE64: ${{ secrets.ORG_SSH_PRIVATE_KEY_BASE64 }}
 
 jobs:
   build-and-publish:
@@ -73,10 +76,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    env:
-      ORG_SERVER_IP: ${{ vars.ORG_SERVER_IP }}
-      ORG_TEST_SERVER_IP: ${{ vars.ORG_TEST_SERVER_IP }}
-      SSH_PRIVATE_KEY_BASE64: ${{ secrets.ORG_SSH_PRIVATE_KEY_BASE64 }}
+
     strategy:
       matrix: 
           image:
@@ -91,9 +91,9 @@ jobs:
             REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
             BRANCH=$(git branch -r --contains ${{ github.ref }} --format "%(refname:lstrip=3)") 
             if [[ $BRANCH == "master" ]]; then
-              echo "SERVER_IP=echoforge.net" >> $GITHUB_ENV
+              echo "SERVER_IP=${{ env.SERVER_IP }}" >> $GITHUB_ENV
             else
-              echo "SERVER_IP=test.echoforge.net" >> $GITHUB_ENV
+              echo "SERVER_IP=${{ env.TEST_SERVER_IP }}" >> $GITHUB_ENV
             fi
             echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
       - name: Set up SSH
