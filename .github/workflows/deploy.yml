@@ -69,24 +69,24 @@ jobs:
 
             - name: Push Docker image
               run: |
-                  docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+                  docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }}
 
             - name: Push "latest" tag (main only)
               if: github.ref_name == 'master'
               run: |
-                  docker tag ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG }} ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
-                  docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+                  docker tag ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }} ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:latest
+                  docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:latest
 
             - name: Push Git tag as Docker tag (main only)
               if: github.ref_name == 'master' && startsWith(github.event.head_commit.message, 'tag:')
               run: |
                   GIT_TAG=$(echo "${{ github.event.head_commit.message }}" | grep -o 'tag:[^ ]*' | cut -d: -f2)
-                  docker tag ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:$GIT_TAG
-                  docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:$GIT_TAG
+                  docker tag ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:latest ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:$GIT_TAG
+                  docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:$GIT_TAG
 
             - name: Deploy to Dokku
               uses: dokku/github-action@master
               with:
-                  git_remote_url: "ssh://dokku@${{ env.SERVER_IP }}/${{ env.IMAGE_NAME }}"
+                  git_remote_url: "ssh://dokku@${{ env.SERVER_IP }}/${{ matrix.image.name  }}"
                   ssh_private_key: ${{ secrets.ORG_SSH_PRIVATE_KEY }}
-                  deploy_docker_image: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+                  deploy_docker_image: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }}
