@@ -13,10 +13,12 @@ jobs:
     build-and-publish:
         runs-on: ubuntu-latest
         name: ${{ matrix.image.name }}
+        continue-on-error: true
         permissions:
             contents: read
             packages: write
         strategy:
+          fail-fast: false
           matrix:
             image:
               - { name: realm, BUILD_REALM: "TRUE", BUILD_WORLD: "FALSE"}
