@@ -76,6 +76,7 @@ jobs:
     env:
       ORG_SERVER_IP: ${{ vars.ORG_SERVER_IP }}
       ORG_TEST_SERVER_IP: ${{ vars.ORG_TEST_SERVER_IP }}
+      SSH_PRIVATE_KEY_BASE64: ${{ secrets.ORG_SSH_PRIVATE_KEY_BASE64 }}
     strategy:
       matrix: 
           image:
@@ -100,13 +101,12 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ secrets.ORG_SSH_PRIVATE_KEY_BASE64 }}" | base64 -d > ~/.ssh/id_rsa
+          echo "${{ env.SSH_PRIVATE_KEY_BASE64 }}" | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
           chmod 600 ~/.ssh/config
       - name: Deploy to Dokku
         run: |
-          echo "${{env.SERVER_IP}} / ${{ vars.ORG_TEST_SERVER_IP }} / ${{ vars.ORG_SERVER_IP }}"
           ssh dokku@${{ env.SERVER_IP }} tags:set ${{ matrix.image.name }} ${{ github.ref_name }}
           ssh dokku@${{ env.SERVER_IP }} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
           ssh dokku@${{ env.SERVER_IP }} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ github.ref_name }}
