@@ -29,7 +29,7 @@ jobs:
     name: Build and Publish ${{ matrix.name }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix).include }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     permissions:
       contents: read
       packages: write
@@ -84,7 +84,7 @@ jobs:
     name: Deploy ${{ matrix.name }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix).include }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Deploy to Dokku
         run: |
