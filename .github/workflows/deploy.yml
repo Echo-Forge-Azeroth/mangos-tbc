@@ -89,9 +89,9 @@ jobs:
             REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
             BRANCH=$(git branch -r --contains ${{ github.ref }} --format "%(refname:lstrip=3)") 
             if [[ $BRANCH == "master" ]]; then
-              echo "SERVER_IP=${{ env.ORG_SERVER_IP }}" >> $GITHUB_ENV
+              echo "SERVER_IP=echoforge.net" >> $GITHUB_ENV
             else
-              echo "SERVER_IP=${{ env.ORG_TEST_SERVER_IP }}" >> $GITHUB_ENV
+              echo "SERVER_IP=test.echoforge.net" >> $GITHUB_ENV
             fi
             echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
       - name: Set up SSH
@@ -105,7 +105,7 @@ jobs:
           chmod 600 ~/.ssh/config
       - name: Deploy to Dokku
         run: |
-          echo "${{ vars.ORG_TEST_SERVER_IP }} / ${{ vars.ORG_SERVER_IP }}"
+          echo "${{env.SERVER_IP}} / ${{ vars.ORG_TEST_SERVER_IP }} / ${{ vars.ORG_SERVER_IP }}"
           ssh dokku@${{ env.SERVER_IP }} tags:set ${{ matrix.image.name }} ${{ github.ref_name }}
           ssh dokku@${{ env.SERVER_IP }} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
           ssh dokku@${{ env.SERVER_IP }} git:from-image --force-rebuild ${{ matrix.image.name }} ghcr.io/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ github.ref_name }}
