@@ -17,10 +17,11 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          echo "matrix={\"include\": [
-            {\"name\": \"realm\", \"BUILD_REALM\": \"TRUE\", \"BUILD_WORLD\": \"FALSE\"},
-            {\"name\": \"world\", \"BUILD_REALM\": \"FALSE\", \"BUILD_WORLD\": \"TRUE\"}
-          ]}" >> $GITHUB_ENV
+            echo '{"include": [
+              {"name": "realm", "BUILD_REALM": "TRUE", "BUILD_WORLD": "FALSE"},
+              {"name": "world", "BUILD_REALM": "FALSE", "BUILD_WORLD": "TRUE"}
+            ]}' > matrix.json
+            echo "matrix=$(cat matrix.json)" >> $GITHUB_ENV
 
   build-and-publish:
     needs: generate-matrix
