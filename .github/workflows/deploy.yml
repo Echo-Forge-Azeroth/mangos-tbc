@@ -61,7 +61,7 @@ jobs:
             - name: Build Docker image
               run: |
                   docker build \
-                    -t ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG }} \
+                    -t ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ env.TAG }} \
                     --target ${{ matrix.image.name }} \
                     --build-arg BUILD_WORLD=${{matrix.image.BUILD_WORLD}} \
                     --build-arg BUILD_REALM==${{matrix.image.BUILD_REALM}} \
