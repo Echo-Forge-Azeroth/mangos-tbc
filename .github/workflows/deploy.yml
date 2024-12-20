@@ -36,7 +36,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Set Docker tag
         run: |
           if [[ "${{ github.ref_name }}" == "master" ]]; then
@@ -61,20 +60,20 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -t ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }} \
-            --target ${{ matrix.image.name  }} \
+            -t ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ env.TAG }} \
+            --target ${{ matrix.image.name }} \
             --build-arg BUILD_WORLD=${{ matrix.image.build_world }} \
             --build-arg BUILD_REALM=${{ matrix.image.build_realm }} \
             .
 
       - name: Push Docker image
         run: |
-          docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name }}:${{ env.TAG }}
 
   deploy:
     needs: build-and-publish
     runs-on: ubuntu-latest
-    name: Deploy ${{ matrix.image.name  }}
+    name: Deploy ${{ matrix.image.name }}
     strategy:
       fail-fast: false
       matrix: 
@@ -86,11 +85,13 @@ jobs:
         run: |
             if [[ "${{ github.ref_name }}" == "master" ]]; then
               SERVER_IP=${{ vars.ORG_SERVER_IP }}
+              TAG=latest
             else
               SERVER_IP=${{ vars.ORG_TEST_SERVER_IP }}
+              TAG=test
             fi
-            docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name  }}:${{ env.TAG }}
-            ssh dokku@${SERVER_IP} apps:destroy --force ${{ matrix.image.name  }} || true
-            ssh dokku@${SERVER_IP} apps:create ${{ matrix.image.name  }}
-            ssh dokku@${SERVER_IP} docker-options:add ${{ matrix.image.name  }} deploy "--restart always"
-            ssh dokku@${SERVER_IP} tags:set ${{ matrix.image.name  }} ${{ env.TAG }}
+            docker pull ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.image.name }}:$TAG
+            ssh dokku@${SERVER_IP} apps:destroy --force ${{ matrix.image.name }} || true
+            ssh dokku@${SERVER_IP} apps:create ${{ matrix.image.name }}
+            ssh dokku@${SERVER_IP} docker-options:add ${{ matrix.image.name }} deploy "--restart always"
+            ssh dokku@${SERVER_IP} tags:set ${{ matrix.image.name }} $TAG
