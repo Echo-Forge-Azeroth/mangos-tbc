@@ -21,9 +21,9 @@ jobs:
             - name: realm
               build_realm: "TRUE"
               build_world: "FALSE"
-            #- name: world
-            #  build_realm: "FALSE"
-            #  build_world: "TRUE"
+            - name: world
+              build_realm: "FALSE"
+              build_world: "TRUE"
     permissions:
       contents: read
       packages: write
@@ -80,7 +80,7 @@ jobs:
       matrix: 
           image:
             - name: realm
-            #- name: world
+            - name: world
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
